@@ -1,0 +1,479 @@
+<!-- templates/accounts/doctor_dashboard.html -->
+{% extends "base.html" %}
+{% block title %}Doctor Dashboard - Report Management{% endblock %}
+
+{% block head %}
+<style>
+  .dashboard-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .header-title h1 {
+    margin: 0;
+    font-size: 2rem;
+  }
+  .header-subtitle {
+    opacity: 0.9;
+    margin-top: 0.5rem;
+  }
+  .logout-btn {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+  }
+  .logout-btn:hover {
+    background: rgba(255,255,255,0.3);
+    color: white;
+  }
+  .report-card {
+    border-left: 5px solid #667eea;
+    transition: all 0.3s ease;
+    margin-bottom: 1.5rem;
+  }
+  .report-card:hover {
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    transform: translateY(-3px);
+  }
+  .patient-badge {
+    background: #e7f1ff;
+    color: #0056b3;
+    padding: 0.8rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+  }
+  .status-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-right: 0.5rem;
+  }
+  .status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+  }
+  .status-verified {
+    background-color: #d4edda;
+    color: #155724;
+  }
+  .status-downloadable {
+    background-color: #cce5ff;
+    color: #004085;
+  }
+  .filter-section {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+  }
+  .btn-verify {
+    padding: 0.5rem 1.5rem;
+  }
+  .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .no-reports {
+    text-align: center;
+    padding: 3rem 1rem;
+  }
+  .report-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    font-size: 0.9rem;
+    color: #666;
+  }
+  .meta-item {
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+  }
+  .meta-label {
+    font-weight: 600;
+    color: #333;
+  }
+  .critical-badge {
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="dashboard-header">
+  <div class="header-title">
+    <h1>Doctor Dashboard</h1>
+    <p class="header-subtitle">Review and approve patient test reports</p>
+  </div>
+  <button type="button" class="btn logout-btn" id="logout-btn">
+    <i class="bi bi-box-arrow-right"></i> Logout
+  </button>
+</div>
+
+<!-- Filter Section -->
+<div class="filter-section">
+  <h5 class="mb-3">Filter Reports</h5>
+  <div class="row g-3">
+    <div class="col-md-4">
+      <label class="form-label">Status</label>
+      <select class="form-select" id="status-filter">
+        <option value="">All Reports</option>
+        <option value="pending">Pending Review</option>
+        <option value="downloadable">Approved</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Test Type</label>
+      <select class="form-select" id="test-type-filter">
+        <option value="">All Types</option>
+        <option value="blood">Blood Test</option>
+        <option value="urine">Urine Test</option>
+        <option value="xray">X-Ray</option>
+        <option value="ultrasound">Ultrasound</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">&nbsp;</label>
+      <button class="btn btn-primary w-100" id="filter-btn">
+        <i class="bi bi-funnel"></i> Apply Filter
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Reports List -->
+<h2 class="mb-4">Patient Reports</h2>
+<div id="reports-container">
+  <div class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="text-muted mt-3">Loading reports...</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function ensureLoggedIn() {
+  const token = getAccessToken();
+  if (!token) {
+    showAlert('You are not logged in. Redirecting to login...', 'warning');
+    setTimeout(() => window.location.href = '/accounts/staff-login/', 2000);
+    return false;
+  }
+  return true;
+}
+
+function getCSRFToken() {
+  const name = 'csrftoken';
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+function getAccessToken() {
+  return localStorage.getItem('access_token');
+}
+
+function showAlert(message, type) {
+  const alertDiv = document.createElement('div');
+  alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3 z-3`;
+  alertDiv.style.zIndex = '1050';
+  alertDiv.role = 'alert';
+  alertDiv.innerHTML = `
+    ${message}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  `;
+  
+  document.body.appendChild(alertDiv);
+  
+  setTimeout(() => {
+    if (alertDiv.parentNode) {
+      const bsAlert = new bootstrap.Alert(alertDiv);
+      bsAlert.close();
+    }
+  }, 5000);
+}
+
+document.getElementById('logout-btn').addEventListener('click', () => {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  showAlert('Logged out successfully', 'success');
+  setTimeout(() => window.location.href = '/accounts/staff-login/', 1000);
+});
+
+async function loadReports(filters = {}) {
+  if (!ensureLoggedIn()) return;
+  
+  const token = getAccessToken();
+  
+  try {
+    const response = await fetch('/api/reports/doctor/all-reports/', {
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (response.status === 401) {
+      showAlert('Session expired. Please login again.', 'warning');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      setTimeout(() => window.location.href = '/accounts/staff-login/', 2000);
+      return;
+    }
+    
+    if (!response.ok) {
+      showAlert('Failed to load reports', 'danger');
+      displayNoReports();
+      return;
+    }
+    
+    let reports = await response.json();
+    
+    if (!Array.isArray(reports)) {
+      showAlert('Invalid data format received from server', 'danger');
+      displayNoReports();
+      return;
+    }
+    
+    if (filters.status) {
+      reports = reports.filter(r => r.status === filters.status);
+    }
+    if (filters.test_type) {
+      reports = reports.filter(r => r.test_type && r.test_type.toLowerCase().includes(filters.test_type.toLowerCase()));
+    }
+    
+    if (reports.length === 0) {
+      displayNoReports(filters);
+      return;
+    }
+    
+    displayReports(reports);
+    
+  } catch (error) {
+    console.error('Error loading reports:', error);
+    showAlert('Network error. Please check your connection.', 'danger');
+    displayNoReports();
+  }
+}
+
+function displayNoReports(filters = {}) {
+  let message = 'No reports found.';
+  let submessage = '';
+  
+  if (filters.status || filters.test_type) {
+    message = 'No reports match your current filter.';
+    submessage = 'Try adjusting the filter settings.';
+  }
+  
+  document.getElementById('reports-container').innerHTML = `
+    <div class="no-reports">
+      <div style="font-size: 3rem; color: #ddd;">📋</div>
+      <h4 class="text-muted mt-3">${message}</h4>
+      <p class="text-muted">${submessage}</p>
+    </div>
+  `;
+}
+
+function displayReports(reports) {
+  const html = reports.map(report => {
+    let statusText = report.status || 'pending';
+    let statusClass = 'status-pending';
+    
+    if (report.status === 'downloadable') {
+      statusText = 'Approved';
+      statusClass = 'status-downloadable';
+    } else if (report.status === 'verified') {
+      statusText = 'Verified';
+      statusClass = 'status-verified';
+    }
+    
+    let uploadedDate = 'N/A';
+    try {
+      if (report.uploaded_at) {
+        uploadedDate = new Date(report.uploaded_at).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+    } catch (e) {
+      console.warn('Invalid date:', report.uploaded_at);
+    }
+    
+    const isCritical = report.is_critical || false;
+    
+    return `
+      <div class="card report-card ${isCritical ? 'border-danger' : ''}">
+        <div class="card-body">
+          <div class="patient-badge ${isCritical ? 'critical-badge' : ''}">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong>${escapeHtml(report.patient_name || 'Unknown Patient')}</strong>
+                <br>
+                <small>Reg ID: ${escapeHtml(report.patient_registration_id || 'N/A')}</small>
+              </div>
+              ${isCritical ? '<span class="badge bg-danger">⚠ Critical</span>' : ''}
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-8">
+              <h5 class="mb-2">${escapeHtml(report.test_name || 'Unnamed Test')}</h5>
+              ${report.test_type ? `<p class="text-muted mb-2"><small>Type: ${escapeHtml(report.test_type)}</small></p>` : ''}
+              
+              <div class="report-meta mt-3">
+                <div class="meta-item">
+                  <span class="meta-label">Uploaded:</span>
+                  <br>${uploadedDate}
+                </div>
+                <div class="meta-item">
+                  <span class="meta-label">Lab Technician:</span>
+                  <br>${escapeHtml(report.uploaded_by_name || 'Unknown')}
+                </div>
+                <div class="meta-item">
+                  <span class="meta-label">Status:</span>
+                  <br><span class="status-badge ${statusClass}">${statusText}</span>
+                </div>
+              </div>
+              
+              ${report.comments ? `
+                <div class="alert alert-info mt-3 mb-0">
+                  <small><strong>Notes:</strong> ${escapeHtml(report.comments)}</small>
+                </div>
+              ` : ''}
+            </div>
+            
+            <div class="col-md-4 text-md-end d-flex flex-column justify-content-between">
+              <div class="action-buttons">
+                ${report.download_url ? `
+                  <a class="btn btn-sm btn-outline-primary mb-2" href="${report.download_url}" target="_blank">
+                    <i class="bi bi-eye"></i> View Report
+                  </a>
+                ` : ''}
+                ${report.status === 'pending' ? `
+                  <button type="button" class="btn btn-sm btn-success verify-btn mb-2" data-report-id="${report.report_id}">
+                    <i class="bi bi-check-circle"></i> Approve
+                  </button>
+                ` : ''}
+                ${report.status === 'downloadable' && report.download_url ? `
+                  <a class="btn btn-sm btn-primary mb-2" href="${report.download_url}" download>
+                    <i class="bi bi-download"></i> Download
+                  </a>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  document.getElementById('reports-container').innerHTML = html;
+  
+  document.querySelectorAll('.verify-btn').forEach(btn => {
+    btn.addEventListener('click', verifyReport);
+  });
+}
+
+async function verifyReport(e) {
+  const reportId = e.target.closest('.verify-btn').dataset.reportId;
+  const token = getAccessToken();
+  
+  if (!confirm('Approve this report for patient download?')) return;
+  
+  const btn = e.target.closest('.verify-btn');
+  btn.disabled = true;
+  const originalHTML = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+  
+  try {
+    const response = await fetch(`/api/reports/${reportId}/verify/`, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify({ approved: true })
+    });
+    
+    if (!response.ok) {
+      showAlert('Failed to approve report', 'danger');
+      btn.disabled = false;
+      btn.innerHTML = originalHTML;
+      return;
+    }
+    
+    showAlert('Report approved successfully!', 'success');
+    setTimeout(() => loadReports(getCurrentFilters()), 1000);
+    
+  } catch (error) {
+    console.error('Error approving report:', error);
+    showAlert('Network error. Please try again.', 'danger');
+    btn.disabled = false;
+    btn.innerHTML = originalHTML;
+  }
+}
+
+function getCurrentFilters() {
+  return {
+    status: document.getElementById('status-filter').value,
+    test_type: document.getElementById('test-type-filter').value
+  };
+}
+
+document.getElementById('filter-btn').addEventListener('click', () => {
+  const filters = getCurrentFilters();
+  loadReports(filters);
+});
+
+function escapeHtml(text) {
+  if (text === null || text === undefined) return '';
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  if (!ensureLoggedIn()) return;
+  loadReports();
+  setInterval(() => {
+    const filters = getCurrentFilters();
+    loadReports(filters);
+  }, 30000);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,656 @@
+<!-- templates/accounts/lab_assistant_dashboard.html -->
+{% extends "base.html" %}
+{% block title %}Lab Assistant Dashboard - Report Upload{% endblock %}
+
+{% block head %}
+<style>
+  .dashboard-header {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .header-title h1 {
+    margin: 0;
+    font-size: 2rem;
+  }
+  .header-subtitle {
+    opacity: 0.9;
+    margin-top: 0.5rem;
+  }
+  .logout-btn {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+  }
+  .logout-btn:hover {
+    background: rgba(255,255,255,0.3);
+    color: white;
+  }
+  .upload-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    margin-bottom: 2.5rem;
+  }
+  .form-section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 1.5rem 0 1rem 0;
+    color: #f5576c;
+    border-bottom: 2px solid #f5576c;
+    padding-bottom: 0.5rem;
+  }
+  .drag-drop-area {
+    border: 3px dashed #f5576c;
+    border-radius: 10px;
+    padding: 2rem;
+    text-align: center;
+    background: #fff9fa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  .drag-drop-area:hover,
+  .drag-drop-area.dragover {
+    border-color: #f093fb;
+    background: #fff3f7;
+  }
+  .drag-drop-icon {
+    font-size: 2.5rem;
+    color: #f5576c;
+    margin-bottom: 0.5rem;
+  }
+  .file-input {
+    display: none;
+  }
+  .uploaded-file {
+    background: #f8f9fa;
+    padding: 0.8rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+    display: none;
+  }
+  .uploaded-file.show {
+    display: block;
+  }
+  .report-card {
+    border-left: 5px solid #f5576c;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+  }
+  .report-card:hover {
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    transform: translateY(-3px);
+  }
+  .status-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-right: 0.5rem;
+  }
+  .status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+  }
+  .status-downloadable {
+    background-color: #d4edda;
+    color: #155724;
+  }
+  .my-uploads-section {
+    margin-top: 3rem;
+  }
+  .btn-upload {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    margin-top: 1.5rem;
+  }
+  .no-uploads {
+    text-align: center;
+    padding: 3rem 1rem;
+  }
+  .form-group {
+    margin-bottom: 1rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="dashboard-header">
+  <div class="header-title">
+    <h1>Lab Assistant Dashboard</h1>
+    <p class="header-subtitle">Upload and manage patient test reports</p>
+  </div>
+  <button type="button" class="btn logout-btn" id="logout-btn">
+    <i class="bi bi-box-arrow-right"></i> Logout
+  </button>
+</div>
+
+<!-- Upload Section -->
+<div class="upload-section">
+  <h3 class="mb-1">Upload New Test Report</h3>
+  <p class="text-muted mb-3">Upload a test report for a patient using their Registration ID or UHID</p>
+  
+  <form id="upload-form">
+    <!-- Patient Selection -->
+    <div class="form-section-title">Patient Information</div>
+    
+    <div class="form-group">
+      <label class="form-label">Patient Registration ID or UHID</label>
+      <input type="text" class="form-control" id="registration_id" placeholder="e.g., REG-12345678 or UHID" required />
+      <small class="text-muted">Enter patient's Registration ID or Unique Health ID</small>
+    </div>
+
+    <!-- Report Details -->
+    <div class="form-section-title">Report Details</div>
+    
+    <div class="row">
+      <div class="col-md-6 form-group">
+        <label class="form-label">Test Name</label>
+        <input type="text" class="form-control" id="test_name" placeholder="e.g., Complete Blood Count (CBC)" required />
+      </div>
+      <div class="col-md-6 form-group">
+        <label class="form-label">Test Type</label>
+        <select class="form-select" id="test_type">
+          <option value="">Select Type</option>
+          <option value="blood">Blood Test</option>
+          <option value="urine">Urine Test</option>
+          <option value="xray">X-Ray</option>
+          <option value="ultrasound">Ultrasound</option>
+          <option value="ecg">ECG</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group form-check">
+      <input type="checkbox" class="form-check-input" id="is_critical" />
+      <label class="form-check-label" for="is_critical">
+        Mark as Critical Result (needs urgent review)
+      </label>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Additional Comments (Optional)</label>
+      <textarea class="form-control" id="comments" rows="3" placeholder="Any notes about the test or patient..."></textarea>
+    </div>
+
+    <!-- File Upload -->
+    <div class="form-section-title">Upload File</div>
+    
+    <div class="drag-drop-area" id="dropZone">
+      <div class="drag-drop-icon">📄</div>
+      <p class="mb-2"><strong>Drag and drop your file here</strong></p>
+      <p class="text-muted mb-0">or click to browse</p>
+      <small class="text-muted d-block mt-1">(PDF, JPG, PNG - Max 10MB)</small>
+    </div>
+    
+    <input type="file" id="fileInput" class="file-input" accept=".pdf,.jpg,.jpeg,.png" />
+    
+    <div class="uploaded-file" id="uploadedFile">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-file-earmark-check text-success" style="font-size: 1.5rem;"></i>
+        <div class="flex-grow-1">
+          <strong id="fileName">File selected</strong>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-danger" id="clearFile">Remove</button>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <button type="submit" class="btn btn-primary btn-upload" id="upload-btn">
+      <span class="btn-text"><i class="bi bi-cloud-upload"></i> Upload Report</span>
+      <span class="btn-spinner" style="display:none;">
+        <span class="spinner-border spinner-border-sm me-2"></span>
+        Uploading...
+      </span>
+    </button>
+  </form>
+</div>
+
+<!-- My Uploads Section -->
+<div class="my-uploads-section">
+  <h3 class="mb-4">My Recent Uploads</h3>
+  <div id="uploads-container">
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="text-muted mt-3">Loading your uploads...</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedFile = null;
+
+// Check authentication
+function ensureLoggedIn() {
+  const token = getAccessToken();
+  if (!token) {
+    showAlert('You are not logged in. Redirecting to login...', 'warning');
+    setTimeout(() => window.location.href = '/accounts/staff-login/', 2000);
+    return false;
+  }
+  return true;
+}
+
+// Get CSRF token from cookies
+function getCSRFToken() {
+  const name = 'csrftoken';
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// Get access token from localStorage
+function getAccessToken() {
+  return localStorage.getItem('access_token');
+}
+
+// Show alert function
+function showAlert(message, type) {
+  // Check if Bootstrap alert exists
+  if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
+    // Create alert element
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.role = 'alert';
+    alertDiv.innerHTML = `
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    // Insert at the beginning of content
+    const content = document.querySelector('.container');
+    if (content) {
+      content.insertBefore(alertDiv, content.firstChild);
+    }
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+      if (alertDiv.parentNode) {
+        alertDiv.remove();
+      }
+    }, 5000);
+  } else {
+    // Fallback to simple alert
+    alert(message);
+  }
+}
+
+// Logout
+document.getElementById('logout-btn').addEventListener('click', () => {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  showAlert('Logged out successfully', 'success');
+  setTimeout(() => window.location.href = '/accounts/staff-login/', 1000);
+});
+
+// Drag and drop functionality
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+// Click to open file dialog
+dropZone.addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  fileInput.click();
+});
+
+// Prevent default drag behaviors
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+  dropZone.addEventListener(eventName, (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+});
+
+// Highlight drop zone when dragging over
+['dragenter', 'dragover'].forEach(eventName => {
+  dropZone.addEventListener(eventName, () => {
+    dropZone.classList.add('dragover');
+  });
+});
+
+// Remove highlight when leaving
+['dragleave', 'drop'].forEach(eventName => {
+  dropZone.addEventListener(eventName, () => {
+    dropZone.classList.remove('dragover');
+  });
+});
+
+// Handle drop
+dropZone.addEventListener('drop', (e) => {
+  const files = e.dataTransfer.files;
+  if (files && files.length > 0) {
+    handleFile(files[0]);
+  }
+});
+
+// Handle file input change
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files && e.target.files.length > 0) {
+    handleFile(e.target.files[0]);
+  }
+});
+
+// Handle file selection
+function handleFile(file) {
+  // Validate file size (10MB limit)
+  if (file.size > 10 * 1024 * 1024) {
+    showAlert('File size exceeds 10MB limit', 'warning');
+    fileInput.value = '';
+    return;
+  }
+  
+  // Validate file type
+  const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+  if (!validTypes.includes(file.type)) {
+    showAlert('Invalid file type. Please upload PDF, JPG, or PNG files only.', 'warning');
+    fileInput.value = '';
+    return;
+  }
+  
+  selectedFile = file;
+  
+  // Update UI
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('uploadedFile').classList.add('show');
+  
+  // Also update file input for form submission
+  const dataTransfer = new DataTransfer();
+  dataTransfer.items.add(file);
+  fileInput.files = dataTransfer.files;
+}
+
+// Clear file selection
+document.getElementById('clearFile').addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  selectedFile = null;
+  fileInput.value = '';
+  document.getElementById('uploadedFile').classList.remove('show');
+});
+
+// Upload form submission - FIXED: Properly prevent default form submission
+document.getElementById('upload-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  if (!ensureLoggedIn()) return;
+  
+  // Validate required fields
+  const registration_id = document.getElementById('registration_id').value.trim();
+  const test_name = document.getElementById('test_name').value.trim();
+  const test_type = document.getElementById('test_type').value;
+  const is_critical = document.getElementById('is_critical').checked;
+  const comments = document.getElementById('comments').value.trim();
+  
+  if (!registration_id) {
+    showAlert('Patient Registration ID or UHID is required', 'warning');
+    return;
+  }
+  
+  if (!test_name) {
+    showAlert('Test name is required', 'warning');
+    return;
+  }
+  
+  if (!selectedFile) {
+    showAlert('Please select a file to upload', 'warning');
+    return;
+  }
+  
+  // Prepare FormData
+  const formData = new FormData();
+  formData.append('registration_id', registration_id);
+  formData.append('test_name', test_name);
+  formData.append('test_type', test_type || '');
+  // Send boolean as string 'true' or 'false' - DRF will convert it
+  formData.append('is_critical', is_critical ? 'true' : 'false');
+  formData.append('comments', comments || '');
+  formData.append('file', selectedFile);
+  
+  // Debug: log FormData contents
+  console.log('FormData being sent:');
+  for (let [key, value] of formData.entries()) {
+    console.log(`  ${key}:`, value);
+  }
+    console.log('Upload request details:');
+    console.log('  URL: /api/reports/upload/');
+    console.log('  Method: POST');
+    console.log('  Auth: Bearer token');
+    console.log('  Content-Type: multipart/form-data (browser will set)');
+  
+  // Get token
+  const token = getAccessToken();
+  if (!token) {
+    showAlert('Authentication token not found. Please login again.', 'warning');
+    setTimeout(() => window.location.href = '/accounts/staff-login/', 2000);
+    return;
+  }
+  
+  // Update button state
+  const btn = document.getElementById('upload-btn');
+  const btnText = btn.querySelector('.btn-text');
+  const btnSpinner = btn.querySelector('.btn-spinner');
+  
+  btnText.style.display = 'none';
+  btnSpinner.style.display = 'inline';
+  btn.disabled = true;
+  
+  try {
+    const response = await fetch('/api/reports/upload/', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'X-CSRFToken': getCSRFToken()
+        // Note: Don't set Content-Type for FormData - browser will set it with boundary
+      },
+      body: formData
+    });
+    
+    // Log response for debugging
+    console.log('Upload response status:', response.status);
+    console.log('Upload response data:', data);
+    
+    if (response.status === 401) {
+      showAlert('Session expired. Please login again.', 'warning');
+      localStorage.removeItem('access_token');
+      setTimeout(() => window.location.href = '/accounts/staff-login/', 2000);
+      return;
+    }
+    
+    if (!response.ok) {
+      // Handle different types of errors
+      let errorMsg = 'Upload failed. Please try again.';
+      
+      if (data.registration_id) {
+        errorMsg = Array.isArray(data.registration_id) ? data.registration_id[0] : data.registration_id;
+      } else if (data.test_name) {
+        errorMsg = Array.isArray(data.test_name) ? data.test_name[0] : data.test_name;
+      } else if (data.file) {
+        errorMsg = Array.isArray(data.file) ? data.file[0] : data.file;
+      } else if (data.error) {
+        errorMsg = data.error;
+      } else if (data.detail) {
+        errorMsg = data.detail;
+      } else if (typeof data === 'object') {
+        // Get first error message from any field
+        for (const key in data) {
+          if (data[key] && Array.isArray(data[key])) {
+            errorMsg = `${key}: ${data[key][0]}`;
+            break;
+          } else if (data[key]) {
+            errorMsg = `${key}: ${data[key]}`;
+            break;
+          }
+        }
+      }
+      
+      console.error('Full error response:', data);
+      showAlert(errorMsg, 'danger');
+      btnText.style.display = 'inline';
+      btnSpinner.style.display = 'none';
+      btn.disabled = false;
+      return;
+    }
+    
+    // Success
+    showAlert('Report uploaded successfully!', 'success');
+    
+    // Reset form
+    document.getElementById('upload-form').reset();
+    fileInput.value = '';
+    selectedFile = null;
+    document.getElementById('uploadedFile').classList.remove('show');
+    
+    // Reset button state
+    btnText.style.display = 'inline';
+    btnSpinner.style.display = 'none';
+    btn.disabled = false;
+    
+    // Reload uploads after a short delay
+    setTimeout(() => loadMyUploads(), 1000);
+    
+  } catch (error) {
+    console.error('Upload error:', error);
+    showAlert('Network error. Please check your connection and try again.', 'danger');
+    btnText.style.display = 'inline';
+    btnSpinner.style.display = 'none';
+    btn.disabled = false;
+  }
+});
+
+// Load my uploads
+async function loadMyUploads() {
+  if (!ensureLoggedIn()) return;
+  
+  const token = getAccessToken();
+  
+  try {
+    const response = await fetch('/api/reports/lab-assistant/my-uploads/', {
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (response.status === 401) {
+      showAlert('Session expired. Please login again.', 'warning');
+      localStorage.removeItem('access_token');
+      setTimeout(() => window.location.href = '/accounts/staff-login/', 2000);
+      return;
+    }
+    
+    if (!response.ok) {
+      const data = await response.json();
+      showAlert(data.detail || 'Failed to load uploads', 'danger');
+      return;
+    }
+    
+    const uploads = await response.json();
+    
+    if (!uploads || uploads.length === 0) {
+      document.getElementById('uploads-container').innerHTML = `
+        <div class="no-uploads">
+          <div style="font-size: 3rem; color: #ddd;">📤</div>
+          <h4 class="text-muted mt-3">No Uploads Yet</h4>
+          <p class="text-muted">Reports you upload will appear here.</p>
+        </div>
+      `;
+      return;
+    }
+    
+    const html = uploads.map(upload => `
+      <div class="card report-card">
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-8">
+              <h5 class="mb-2">${escapeHtml(upload.test_name || 'Unnamed Test')}</h5>
+              <p class="text-muted mb-2">
+                <strong>Patient:</strong> ${escapeHtml(upload.patient_name || 'Unknown')} 
+                (Reg: ${escapeHtml(upload.patient_registration_id || 'N/A')})
+              </p>
+              ${upload.test_type ? `<p class="text-muted mb-2"><small>Type: ${escapeHtml(upload.test_type)}</small></p>` : ''}
+              ${upload.is_critical ? '<p><span class="badge bg-danger">⚠ Critical</span></p>' : ''}
+              ${upload.comments ? `<p class="text-muted"><small>Comments: ${escapeHtml(upload.comments)}</small></p>` : ''}
+              <p class="text-muted mb-0">
+                <small>Uploaded: ${new Date(upload.uploaded_at).toLocaleDateString()}</small>
+              </p>
+            </div>
+            <div class="col-md-4 text-md-end">
+              <span class="status-badge ${upload.status === 'downloadable' ? 'status-downloadable' : 'status-pending'}">
+                ${upload.status === 'downloadable' ? '✓ Approved' : '⧗ Pending'}
+              </span>
+              <br>
+              <small class="text-muted d-block mt-2">
+                ${upload.approved_by_name ? `Approved by: ${upload.approved_by_name}` : 'Awaiting review'}
+              </small>
+              ${upload.status === 'downloadable' && upload.file_url ? `
+                <a href="${upload.file_url}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                  <i class="bi bi-download"></i> Download
+                </a>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    
+    document.getElementById('uploads-container').innerHTML = html;
+    
+  } catch (error) {
+    console.error('Error loading uploads:', error);
+    document.getElementById('uploads-container').innerHTML = `
+      <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i> Failed to load uploads. Please refresh the page.
+      </div>
+    `;
+  }
+}
+
+// Helper to escape HTML
+function escapeHtml(text) {
+  if (!text) return '';
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  if (!ensureLoggedIn()) return;
+  loadMyUploads();
+  
+  // Auto-refresh every 30 seconds
+  setInterval(loadMyUploads, 30000);
+});
+</script>
+{% endblock %}

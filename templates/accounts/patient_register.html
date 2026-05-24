@@ -1,0 +1,248 @@
+<!-- templates/accounts/patient_register.html -->
+{% extends "base.html" %}
+{% block title %}Patient Registration{% endblock %}
+
+{% block head %}
+<style>
+  .registration-form {
+    max-width: 600px;
+    margin: 2rem auto;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    padding: 2rem;
+    border-radius: 10px;
+  }
+  .form-section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+    color: #0056b3;
+    border-bottom: 2px solid #0056b3;
+    padding-bottom: 0.5rem;
+  }
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  .btn-register {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    margin-top: 1.5rem;
+  }
+  .login-link {
+    text-align: center;
+    margin-top: 1.5rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="registration-form">
+  <h2 class="mb-4">Patient Registration</h2>
+  <p class="text-muted">Create your account to access medical reports and services</p>
+  
+  <form id="patient-register-form">
+    <!-- Personal Information -->
+    <div class="form-section-title">Personal Information</div>
+    
+    <div class="row">
+      <div class="col-md-6 form-group">
+        <label class="form-label">First Name</label>
+        <input type="text" class="form-control" id="first_name" placeholder="murshad" />
+      </div>
+      <div class="col-md-6 form-group">
+        <label class="form-label">Last Name</label>
+        <input type="text" class="form-control" id="last_name" placeholder="ali" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Email Address</label>
+      <input type="email" class="form-control" id="email" placeholder="murshad@example.com" required />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Phone Number</label>
+      <input type="tel" class="form-control" id="phone" placeholder="8791807537" required />
+    </div>
+
+    <!-- Medical Information -->
+    <div class="form-section-title">Medical Information</div>
+
+    <div class="form-group">
+      <label class="form-label">Aadhaar Number</label>
+      <input type="text" class="form-control" id="aadhaar" placeholder="XXXX XXXX XXXX XXXX" maxlength="16" required />
+      <small class="text-muted">12-digit Aadhaar ID (secure)</small>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6 form-group">
+        <label class="form-label">Date of Birth</label>
+        <input type="date" class="form-control" id="dob" required />
+      </div>
+      <div class="col-md-6 form-group">
+        <label class="form-label">Gender</label>
+        <select class="form-select" id="gender" required>
+          <option value="">Select Gender</option>
+          <option value="M">Male</option>
+          <option value="F">Female</option>
+          <option value="O">Other</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Credentials -->
+    <div class="form-section-title">Login Credentials</div>
+
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input type="text" class="form-control" id="username" placeholder="Choose a username" required />
+      <small class="text-muted">Min 3 characters, alphanumeric</small>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-control" id="password" placeholder="Min 8 characters" minlength="8" required />
+      <small class="text-muted">Use uppercase, lowercase, numbers, and symbols for security</small>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Confirm Password</label>
+      <input type="password" class="form-control" id="confirm_password" required />
+    </div>
+
+    <!-- Submit -->
+    <button type="submit" class="btn btn-primary btn-register">
+      <span id="btn-text">Create Account</span>
+      <span id="btn-spinner" style="display:none;">
+        <span class="spinner-border spinner-border-sm me-2"></span>
+        Registering...
+      </span>
+    </button>
+
+    <div class="login-link">
+      <p>Already have an account? 
+        <a href="/accounts/patient-login/" class="btn btn-link">Login here</a>
+      </p>
+    </div>
+  </form>
+</div>
+
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">Registration Successful!</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p><strong>Welcome!</strong> Your account has been created successfully.</p>
+        <p class="mb-2">Your <strong>Registration ID</strong>:</p>
+        <div class="p-2 bg-light rounded border">
+          <p style="font-family: monospace; font-weight: bold; margin: 0; font-size: 1.1rem;" id="reg-id-display"></p>
+        </div>
+        <p class="text-muted mt-3"><small>Save this ID for future reference. You can use it to login with your Aadhaar.</small></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="goto-login-btn">Go to Dashboard</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('patient-register-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const first_name = document.getElementById('first_name').value.trim();
+  const last_name = document.getElementById('last_name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  const aadhaar = document.getElementById('aadhaar').value.trim();
+  const dob = document.getElementById('dob').value;
+  const gender = document.getElementById('gender').value;
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  const confirm_password = document.getElementById('confirm_password').value;
+
+  // Validation
+  if (!email || !phone || !aadhaar || !dob || !gender || !username || !password) {
+    showAlert('All required fields must be filled', 'warning');
+    return;
+  }
+
+  if (username.length < 3) {
+    showAlert('Username must be at least 3 characters', 'warning');
+    return;
+  }
+
+  if (password !== confirm_password) {
+    showAlert('Passwords do not match', 'warning');
+    return;
+  }
+
+  if (password.length < 8) {
+    showAlert('Password must be at least 8 characters', 'warning');
+    return;
+  }
+
+  // Show loading state
+  document.getElementById('btn-text').style.display = 'none';
+  document.getElementById('btn-spinner').style.display = 'inline';
+
+  try {
+    const response = await fetch('/api/accounts/patient/register/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify({
+        username,
+        password,
+        email,
+        phone,
+        aadhaar,
+        dob,
+        gender,
+        first_name,
+        last_name
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      showAlert(data.error || 'Registration failed. Please try again.', 'danger');
+      document.getElementById('btn-text').style.display = 'inline';
+      document.getElementById('btn-spinner').style.display = 'none';
+      return;
+    }
+
+    // Success - show modal with registration ID
+    document.getElementById('reg-id-display').textContent = data.registration_id;
+    
+    // Store tokens
+    if (data.access) {
+      localStorage.setItem('access_token', data.access);
+      localStorage.setItem('refresh_token', data.refresh);
+    }
+
+    const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+    successModal.show();
+
+    document.getElementById('goto-login-btn').addEventListener('click', () => {
+      window.location.href = '/accounts/patient-dashboard/';
+    });
+
+  } catch (error) {
+    showAlert('Error: ' + error.message, 'danger');
+    document.getElementById('btn-text').style.display = 'inline';
+    document.getElementById('btn-spinner').style.display = 'none';
+  }
+});
+</script>
+{% endblock %}

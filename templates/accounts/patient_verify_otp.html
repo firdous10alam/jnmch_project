@@ -1,0 +1,53 @@
+<!-- templates/accounts/patient_verify_otp.html -->
+{% extends "base.html" %}
+{% block title %}Patient Login (Verify OTP){% endblock %}
+
+{% block content %}
+<h2>Verify OTP</h2>
+<form id="verify-otp-form">
+  <div class="mb-3">
+    <label class="form-label">Session ID</label>
+    <input id="session_id" class="form-control" required placeholder="Paste session id here" />
+  </div>
+  <div class="mb-3">
+    <label class="form-label">OTP</label>
+    <input id="otp" class="form-control" required placeholder="123456" />
+  </div>
+  <button class="btn btn-primary">Verify OTP</button>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Prefill session id from localStorage when available (keeps it hidden from UI flows that store it)
+document.addEventListener('DOMContentLoaded', function(){
+  try {
+    const sid = localStorage.getItem('otp_session_id');
+    if (sid) document.getElementById('session_id').value = sid;
+  } catch(e) {}
+});
+document.getElementById('verify-otp-form').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const session_id = document.getElementById('session_id').value.trim();
+  const otp = document.getElementById('otp').value.trim();
+  if(!session_id || !otp){ showAlert('session_id and otp required','warning'); return; }
+  try {
+    const res = await fetch('/api/otp/verify/', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'X-CSRFToken': getCSRFToken() },
+      body: JSON.stringify({ session_id, otp })
+    });
+    const data = await res.json();
+    if(!res.ok) { showAlert(data.error || JSON.stringify(data),'danger'); return; }
+    if (data.access) {
+      localStorage.setItem('access_token', data.access);
+      localStorage.setItem('refresh_token', data.refresh);
+      showAlert('Login successful', 'success');
+      setTimeout(() => window.location.href = '/accounts/patient-dashboard/', 1000);
+    } else {
+      showAlert(data.message || 'OTP verified; proceed to register','info');
+    }
+  } catch(err){ showAlert(err.message,'danger'); }
+});
+</script>
+{% endblock %}

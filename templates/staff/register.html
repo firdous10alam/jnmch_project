@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Staff Registration{% endblock %}
+
+{% block head %}
+<style>
+    .form-box {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        width: 420px;
+        margin: 2rem auto;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }
+    .form-box h2 { text-align:center; margin-bottom:1rem }
+    .form-box label { font-weight:600 }
+</style>
+{% endblock %}
+
+{% block staff %}
+<body style="background-color: #33b7c9;">
+    
+</body>
+{% endblock %}
+
+
+{% block content %}
+<div class="form-box">
+    <h2>Staff Registration</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="mb-2">
+            <label class="form-label">Username</label>
+            <input class="form-control" type="text" name="username" required placeholder="username123"/>
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label">Email</label>
+            <input class="form-control" type="email" name="email" required  placeholder="example@gmail.com"/>
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label">Password</label>
+            <input class="form-control" type="password" name="password" required placeholder="Enter a strong password"/>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Role</label>
+            <select class="form-select" name="role" required>
+                <option value="">Select Role</option>
+                <option value="doctor">Doctor</option>
+                <option value="lab_technician">Lab Technician</option>
+            </select>
+        </div>
+
+        <button class="btn btn-primary w-100" type="submit">Register Staff</button>
+    </form>
+</div>
+{% endblock %}

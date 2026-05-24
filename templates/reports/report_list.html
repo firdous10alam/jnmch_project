@@ -1,0 +1,63 @@
+<!-- templates/reports/report_list.html -->
+{% extends "base.html" %}
+{% block title %}Reports (All){% endblock %}
+
+{% block content %}
+<h2>All Reports</h2>
+<div id="reports"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadAll() {
+  const token = getAccessToken();
+  if(!token){ showAlert('Not logged in','warning'); return; }
+  try {
+    const res = await fetch('/api/reports/my-reports/', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    if(!res.ok) { showAlert(data.detail || JSON.stringify(data),'danger'); return; }
+    
+    if(!data || data.length === 0) {
+      document.getElementById('reports').innerHTML = '<p class="text-muted">No reports found.</p>';
+      return;
+    }
+    
+    const html = data.map(r=>`
+      <div class="card mb-2">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h5>${r.test_name} <small class="badge bg-secondary">${r.status}</small></h5>
+              <p class="mb-2 text-muted">Uploaded: ${new Date(r.uploaded_at).toLocaleDateString()}</p>
+            </div>
+          </div>
+          ${r.status === 'downloadable' ? `<a href="${r.download_url}" class="btn btn-sm btn-primary">Download Report</a>` : ''}
+          ${r.status === 'pending' ? `<button data-id="${r.report_id}" class="btn btn-sm btn-success mark">Mark Downloadable</button>` : ''}
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('reports').innerHTML = html;
+    
+    document.querySelectorAll('.mark').forEach(btn=>{
+      btn.addEventListener('click', async ev=>{
+        const id = btn.dataset.id;
+        const res = await fetch(`/api/reports/${id}/mark-downloadable/`, {
+          method: 'POST',
+          headers: {'Authorization':'Bearer '+getAccessToken(), 'X-CSRFToken': getCSRFToken()}
+        });
+        if(res.ok) { showAlert('Marked downloadable','success'); loadAll(); } 
+        else { 
+          const errData = await res.json();
+          showAlert(errData.detail || 'Failed to mark as downloadable','danger'); 
+        }
+      });
+    });
+  } catch(err) {
+    showAlert(err.message,'danger');
+  }
+}
+loadAll();
+</script>
+{% endblock %}

@@ -1,0 +1,342 @@
+<!-- templates/accounts/patient_dashboard.html -->
+{% extends "base.html" %}
+{% block title %}My Medical Reports - Patient Dashboard{% endblock %}
+
+{% block head %}
+<style>
+  .dashboard-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+  }
+  .patient-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .info-card {
+    background: rgba(255,255,255,0.1);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .info-label {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    text-transform: uppercase;
+  }
+  .info-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-top: 0.3rem;
+  }
+  .report-card {
+    border-left: 5px solid #667eea;
+    transition: all 0.3s ease;
+  }
+  .report-card:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+  }
+  .report-status {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+  }
+  .status-downloadable {
+    background-color: #d4edda;
+    color: #155724;
+  }
+  .no-reports {
+    text-align: center;
+    padding: 3rem 1rem;
+  }
+  .btn-download {
+    padding: 0.5rem 1.5rem;
+  }
+  .logout-btn {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Logout Button -->
+<button type="button" class="btn btn-outline-danger logout-btn" id="logout-btn">
+  <i class="bi bi-box-arrow-right"></i> Logout
+</button>
+
+<!-- Dashboard Header -->
+<div class="dashboard-header">
+  <h1>My Medical Dashboard</h1>
+  <p class="mb-0">Welcome back! Here are your test reports and health records.</p>
+  
+  <div class="patient-info">
+    <div class="info-card">
+      <div class="info-label">Registration ID</div>
+      <div class="info-value" id="reg-id">Loading...</div>
+    </div>
+    <div class="info-card">
+      <div class="info-label">Full Name</div>
+      <div class="info-value" id="full-name">Loading...</div>
+    </div>
+    <div class="info-card">
+      <div class="info-label">Email</div>
+      <div class="info-value" id="email" style="font-size: 0.9rem;">Loading...</div>
+    </div>
+    <div class="info-card">
+      <div class="info-label">Phone</div>
+      <div class="info-value" id="phone">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Reports Section -->
+<div class="row">
+  <div class="col-lg-10">
+    <h2 class="mb-4">Your Test Reports</h2>
+    <div id="reports-list">
+      <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="text-muted mt-3">Loading your reports...</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Check authentication
+function ensureLoggedIn() {
+  const token = getAccessToken();
+  if (!token) {
+    showAlert('You are not logged in. Redirecting to login...', 'warning');
+    setTimeout(() => window.location.href = '/accounts/patient-login/', 2000);
+    return false;
+  }
+  return true;
+}
+
+// Logout
+document.getElementById('logout-btn').addEventListener('click', () => {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  showAlert('Logged out successfully', 'success');
+  setTimeout(() => window.location.href = '/accounts/patient-login/', 1000);
+});
+
+// Load patient info
+async function loadPatientInfo() {
+  const token = getAccessToken();
+  
+  try {
+    const response = await fetch('/api/accounts/patient/info/', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (response.status === 401) {
+      showAlert('Session expired. Please login again.', 'warning');
+      localStorage.removeItem('access_token');
+      setTimeout(() => window.location.href = '/accounts/patient-login/', 2000);
+      return;
+    }
+    
+    if (!response.ok) {
+      throw new Error('Failed to load patient info');
+    }
+    
+    const data = await response.json();
+    console.log('Patient info response:', data);
+    document.getElementById('reg-id').textContent = data.registration_id || 'N/A';
+    document.getElementById('full-name').textContent = data.full_name || 'N/A';
+    document.getElementById('email').textContent = data.email || 'N/A';
+    document.getElementById('phone').textContent = data.phone || 'N/A';
+    
+  } catch (error) {
+    console.error('Error loading patient info:', error);
+    document.getElementById('reg-id').textContent = 'Error loading';
+    document.getElementById('full-name').textContent = 'Error loading';
+    document.getElementById('email').textContent = 'Error loading';
+    document.getElementById('phone').textContent = 'Error loading';
+  }
+}
+
+// Load reports
+async function loadReports() {
+  if (!ensureLoggedIn()) return;
+  
+  const token = getAccessToken();
+  
+  try {
+    const response = await fetch('/api/reports/my-reports/', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (response.status === 401) {
+      showAlert('Session expired. Please login again.', 'warning');
+      localStorage.removeItem('access_token');
+      setTimeout(() => window.location.href = '/accounts/patient-login/', 2000);
+      return;
+    }
+    
+    if (!response.ok) {
+      const data = await response.json();
+      showAlert(data.detail || 'Failed to load reports', 'danger');
+      return;
+    }
+    
+    const reports = await response.json();
+    console.log('Reports response length:', Array.isArray(reports) ? reports.length : 'not-array', reports);
+    
+    if (!reports || reports.length === 0) {
+      document.getElementById('reports-list').innerHTML = `
+        <div class="no-reports">
+          <div style="font-size: 3rem; color: #ddd;">📋</div>
+          <h4 class="text-muted mt-3">No Test Reports Yet</h4>
+          <p class="text-muted">Your test reports will appear here once they are uploaded by the lab.</p>
+          <p class="text-muted"><small>Please check back later or contact your healthcare provider.</small></p>
+        </div>
+      `;
+      return;
+    }
+    
+    const html = reports.map(report => `
+      <div class="card report-card mb-3">
+        <div class="card-body">
+          <div class="row align-items-start">
+            <div class="col">
+              <h5 class="card-title">${escapeHtml(report.test_name)}</h5>
+              ${report.test_type ? `<p class="text-muted mb-2"><small>Type: ${escapeHtml(report.test_type)}</small></p>` : ''}
+              <p class="text-muted mb-2">
+                <small>Uploaded: ${new Date(report.uploaded_at).toLocaleDateString()}</small>
+              </p>
+              <p class="text-muted mb-3">
+                <small>Lab Tech: ${escapeHtml(report.uploaded_by_name || 'Unknown')}</small>
+              </p>
+              ${report.is_critical ? '<span class="badge bg-danger mb-2">Critical Result</span>' : ''}
+              <div>
+                <span class="report-status ${report.status === 'downloadable' ? 'status-downloadable' : 'status-pending'}">
+                  ${report.status === 'downloadable' ? '✓ Ready for Download' : '⧗ Pending Verification'}
+                </span>
+              </div>
+            </div>
+            <div class="col-auto">
+              ${report.status === 'downloadable' ? `
+                <button type="button" class="btn btn-sm btn-primary btn-download" data-report-id="${report.report_id}">
+                  <i class="bi bi-download"></i> Download
+                </button>
+              ` : `
+                <button class="btn btn-sm btn-secondary" disabled>
+                  Awaiting Verification
+                </button>
+              `}
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    
+    document.getElementById('reports-list').innerHTML = html;
+    
+    document.querySelectorAll('.btn-download').forEach(btn => {
+      btn.addEventListener('click', downloadPatientReport);
+    });
+    
+  } catch (error) {
+    showAlert('Error: ' + error.message, 'danger');
+    document.getElementById('reports-list').innerHTML = `
+      <div class="alert alert-danger">
+        <strong>Error:</strong> Failed to load reports. Please try refreshing the page.
+      </div>
+    `;
+  }
+}
+
+// Helper to escape HTML
+function escapeHtml(text) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
+// Download report with authentication
+async function downloadPatientReport(e) {
+  const reportId = e.target.closest('.btn-download').dataset.reportId;
+  const token = getAccessToken();
+  
+  if (!token) {
+    showAlert('Not authenticated. Please login again.', 'warning');
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/reports/${reportId}/download/`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (response.status === 401) {
+      showAlert('Session expired. Please login again.', 'warning');
+      localStorage.removeItem('access_token');
+      setTimeout(() => window.location.href = '/accounts/patient-login/', 2000);
+      return;
+    }
+    
+    if (!response.ok) {
+      showAlert('Failed to download report', 'danger');
+      return;
+    }
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `report_${reportId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Error downloading report:', error);
+    showAlert('Network error. Please try again.', 'danger');
+  }
+}
+
+// Load on page load - ensure DOM ready and add debug logs
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('Patient dashboard initializing...');
+  if (!ensureLoggedIn()) return;
+
+  // Load patient info first, then reports
+  loadPatientInfo().then(() => {
+    console.log('Patient info loaded, loading reports...');
+    loadReports();
+  }).catch(err => {
+    console.error('Error during initial load:', err);
+    // Still attempt to load reports so user can see any available data
+    loadReports();
+  });
+
+  // Refresh reports every 30 seconds
+  setInterval(loadReports, 30000);
+});
+</script>
+{% endblock %}

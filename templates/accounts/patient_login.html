@@ -1,0 +1,387 @@
+<!-- templates/accounts/patient_login.html -->
+{% extends "base.html" %}
+{% block title %}Patient Login{% endblock %}
+
+{% block head %}
+<style>
+  .login-container {
+    max-width: 500px;
+    margin: 3rem auto;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    padding: 2rem;
+    border-radius: 10px;
+  }
+  .login-option {
+    border: 2px solid #ddd;
+    padding: 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 1rem;
+  }
+  .login-option:hover {
+    border-color: #0056b3;
+    background-color: #f8f9ff;
+  }
+  .login-option.active {
+    border-color: #0056b3;
+    background-color: #e7f1ff;
+  }
+  .login-form {
+    display: none;
+  }
+  .login-form.active {
+    display: block;
+  }
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  .btn-login {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    margin-top: 1.5rem;
+  }
+  .divider {
+    text-align: center;
+    margin: 2rem 0;
+    position: relative;
+  }
+  .divider::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 100%;
+    height: 1px;
+    background: #ddd;
+  }
+  .divider span {
+    background: white;
+    padding: 0 10px;
+    position: relative;
+    color: #666;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+  <h2 class="mb-1">Patient Login</h2>
+  <p class="text-muted mb-4">Access your medical reports and health information</p>
+
+  <!-- Login Option Selector -->
+  <div id="login-options">
+    <div class="login-option active" data-option="credentials">
+      <h5 class="mb-2">
+        <i class="bi bi-person-circle"></i> Username & Password
+      </h5>
+      <p class="text-muted mb-0">Login with your registered username</p>
+    </div>
+
+    <div class="login-option" data-option="aadhaar">
+      <h5 class="mb-2">
+        <i class="bi bi-credit-card"></i> Aadhaar/Registration ID
+      </h5>
+      <p class="text-muted mb-0">Login using Aadhaar number or Registration ID with OTP</p>
+    </div>
+  </div>
+
+  <!-- Credentials Login Form -->
+  <form id="credentials-login-form" class="login-form active">
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input type="text" class="form-control" id="cred-username" placeholder="Enter your username" required />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-control" id="cred-password" placeholder="Enter your password" required />
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-login">
+      <span class="btn-text">Login</span>
+      <span class="btn-spinner" style="display:none;">
+        <span class="spinner-border spinner-border-sm me-2"></span>
+        Logging in...
+      </span>
+    </button>
+  </form>
+
+  <!-- Aadhaar/OTP Login Form -->
+  <form id="aadhaar-login-form" class="login-form">
+    <div class="form-group">
+      <label class="form-label">Aadhaar Number or Registration ID</label>
+            <input type="text" class="form-control" id="aadhaar-input" 
+              placeholder="Enter Aadhaar (12-digit) or Registration ID (e.g., REG-001)" 
+              required />
+      <small class="text-muted">
+        • Enter 12-digit Aadhaar number<br>
+        • OR Registration ID starting with REG-
+      </small>
+    </div>
+
+    <button type="button" class="btn btn-outline-primary btn-login" id="request-otp-btn">
+      Request OTP
+    </button>
+
+    <div id="otp-section" style="display:none; margin-top: 1.5rem;">
+      <div class="alert alert-info">
+        <small>OTP has been sent to your registered mobile number.</small>
+      </div>
+      
+      <!-- Hidden session id for JS use (do not display to user) -->
+      <input type="hidden" id="session-id" />
+
+      <div class="form-group">
+        <label class="form-label">OTP</label>
+        <input type="text" class="form-control" id="otp-input" placeholder="6-digit OTP" maxlength="6" pattern="\d{6}" />
+        <small class="text-muted">Enter the 6-digit OTP sent to your registered mobile</small>
+      </div>
+
+      <button type="button" class="btn btn-primary btn-login" id="verify-otp-btn">
+        Verify OTP & Login
+      </button>
+    </div>
+  </form>
+
+  <!-- New User Link -->
+  <div class="divider">
+    <span>New User?</span>
+  </div>
+
+  <a href="/accounts/patient-register/" class="btn btn-outline-success w-100">
+    Create New Account
+  </a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Tab switching between login methods
+document.querySelectorAll('.login-option').forEach(option => {
+  option.addEventListener('click', function() {
+    const optionId = this.dataset.option;
+    
+    // Update active state
+    document.querySelectorAll('.login-option').forEach(o => o.classList.remove('active'));
+    this.classList.add('active');
+    
+    // Show/hide forms
+    document.querySelectorAll('.login-form').forEach(f => f.classList.remove('active'));
+    document.getElementById(optionId + '-login-form').classList.add('active');
+  });
+});
+
+// Helper function to get CSRF token
+function getCSRFToken() {
+  const name = 'csrftoken';
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// Helper function to show alerts
+function showAlert(message, type) {
+  // Remove any existing alerts
+  const existingAlert = document.querySelector('.custom-alert');
+  if (existingAlert) existingAlert.remove();
+  
+  const alertDiv = document.createElement('div');
+  alertDiv.className = `alert alert-${type} custom-alert`;
+  alertDiv.innerHTML = message;
+  alertDiv.style.position = 'fixed';
+  alertDiv.style.top = '20px';
+  alertDiv.style.right = '20px';
+  alertDiv.style.zIndex = '9999';
+  document.body.appendChild(alertDiv);
+  
+  setTimeout(() => alertDiv.remove(), 5000);
+}
+
+// Credentials Login
+document.getElementById('credentials-login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const username = document.getElementById('cred-username').value.trim();
+  const password = document.getElementById('cred-password').value;
+  
+  if (!username || !password) {
+    showAlert('Username and password required', 'warning');
+    return;
+  }
+  
+  const btn = e.target.querySelector('button[type="submit"]');
+  btn.querySelector('.btn-text').style.display = 'none';
+  btn.querySelector('.btn-spinner').style.display = 'inline';
+  btn.disabled = true;
+  
+  try {
+    const response = await fetch('/api/accounts/patient/login/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify({ username, password })
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      showAlert(data.detail || data.error || 'Login failed', 'danger');
+      btn.querySelector('.btn-text').style.display = 'inline';
+      btn.querySelector('.btn-spinner').style.display = 'none';
+      btn.disabled = false;
+      return;
+    }
+    
+    // Store tokens
+    localStorage.setItem('access_token', data.access);
+    localStorage.setItem('refresh_token', data.refresh);
+    
+    showAlert('Login successful!', 'success');
+    setTimeout(() => {
+      window.location.href = '/accounts/patient-dashboard/';
+    }, 1000);
+    
+  } catch (error) {
+    showAlert('Error: ' + error.message, 'danger');
+    btn.querySelector('.btn-text').style.display = 'inline';
+    btn.querySelector('.btn-spinner').style.display = 'none';
+    btn.disabled = false;
+  }
+});
+
+// Request OTP
+document.getElementById('request-otp-btn').addEventListener('click', async () => {
+  const inputVal = document.getElementById('aadhaar-input').value.trim();
+  
+  if (!inputVal) {
+    showAlert('Aadhaar or Registration ID required', 'warning');
+    return;
+  }
+  
+  // Validate format
+  const isAadhaar = /^\d{12}$/.test(inputVal.replace(/\s+/g, ''));
+  // Accept registration IDs that start with REG- and contain letters/digits (hex-style IDs like REG-1F4D4107)
+  const isRegId = /^REG-[A-Z0-9]+$/i.test(inputVal);
+
+  if (!isAadhaar && !isRegId) {
+    showAlert('Please enter valid 12-digit Aadhaar or Registration ID (e.g., REG-1F4D4107)', 'warning');
+    return;
+  }
+  
+  const btn = document.getElementById('request-otp-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Requesting...';
+
+  try {
+    const payload = isRegId ? 
+      { registration_id: inputVal.toUpperCase().trim() } : 
+      { aadhaar: inputVal.replace(/\s+/g, '') };
+
+    const response = await fetch('/api/otp/request/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      showAlert(data.error || data.detail || 'Failed to request OTP', 'danger');
+      btn.disabled = false;
+      btn.innerHTML = 'Request OTP';
+      return;
+    }
+    
+    // Show OTP section
+    document.getElementById('otp-section').style.display = 'block';
+    document.getElementById('session-id').value = data.session_id; 
+    showAlert('OTP sent to registered mobile number', 'success');
+    btn.disabled = true;
+    btn.innerHTML = 'OTP Sent';
+    
+  } catch (error) {
+    showAlert('Error: ' + error.message, 'danger');
+    btn.disabled = false;
+    btn.innerHTML = 'Request OTP';
+  }
+});
+
+// Verify OTP
+document.getElementById('verify-otp-btn').addEventListener('click', async () => {
+  const session_id = document.getElementById('session-id').value.trim();
+  const otp = document.getElementById('otp-input').value.trim();
+  
+  if (!session_id) {
+    showAlert('Please request OTP first', 'warning');
+    return;
+  }
+  
+  if (!otp || !/^\d{6}$/.test(otp)) {
+    showAlert('Please enter valid 6-digit OTP', 'warning');
+    return;
+  }
+  
+  const btn = document.getElementById('verify-otp-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying...';
+
+  try {
+    const response = await fetch('/api/otp/verify/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify({ session_id, otp })
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      showAlert(data.error || data.detail || 'OTP verification failed', 'danger');
+      btn.disabled = false;
+      btn.innerHTML = 'Verify OTP & Login';
+      return;
+    }
+    
+    // If user exists and OTP verified
+    if (data.access) {
+      localStorage.setItem('access_token', data.access);
+      localStorage.setItem('refresh_token', data.refresh);
+      showAlert('Login successful!', 'success');
+      setTimeout(() => {
+        window.location.href = '/accounts/patient-dashboard/';
+      }, 1000);
+    } else {
+      // No user found - need to register
+      showAlert('OTP verified. No patient account found. Please register.', 'info');
+      // You could redirect to registration page with pre-filled Aadhaar
+      setTimeout(() => {
+        window.location.href = '/accounts/patient-register/?verified=true';
+      }, 1500);
+    }
+    
+  } catch (error) {
+    showAlert('Error: ' + error.message, 'danger');
+    btn.disabled = false;
+    btn.innerHTML = 'Verify OTP & Login';
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}JNMCH Online Medical Portal{% endblock %}
+
+{% block head %}
+<style>
+  .hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 4rem 0;
+    border-radius: 10px;
+    margin-bottom: 3rem;
+  }
+  .hero h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+  .hero p {
+    font-size: 1.2rem;
+    opacity: 0.95;
+  }
+  .card-section {
+    margin-bottom: 3rem;
+  }
+  .feature-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    height: 100%;
+  }
+  .feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  }
+  .feature-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+  .feature-card h4 {
+    color: #667eea;
+    margin-bottom: 1rem;
+  }
+  .cta-button {
+    display: inline-block;
+    padding: 0.75rem 2rem;
+    border-radius: 8px;
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    margin-top: 1rem;
+  }
+  .btn-patient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+  .btn-patient:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    color: white;
+  }
+  .btn-staff {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  }
+  .btn-staff:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+    color: white;
+  }
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="hero" id="heroid">
+  <div style="margin-left:10px; text-align:center;">
+    <h1>JNMCH Online Medical Report Portal</h1>
+    <p>Access, manage, and share your medical test reports securely</p>
+  <p style="opacity: 0.8; font-size: 1rem;"><small>A comprehensive platform for patients, doctors, and lab assistants</small></p>
+
+  </div>
+  </div>
+
+<!-- Features Section -->
+<div class="card-section">
+  <h2 class="mb-4 text-center">How It Works</h2>
+  <div class="features-grid">
+    <!-- Patient Features -->
+    <div class="feature-card">
+      <div class="feature-icon">👤</div>
+      <h4>Patients</h4>
+      <p>Login easily using your Aadhaar/Registration Number, view your test reports, and access results anytime, anywhere.</p>
+      <a href="/accounts/patient-login/" class="cta-button btn-patient">Login here</a>
+    </div>
+
+    <!-- Doctor Features -->
+    <div class="feature-card">
+      <div class="feature-icon">👨‍⚕️</div>
+      <h4>Doctors</h4>
+      <p>Review patient reports, approve results, and manage medical documentation efficiently.</p>
+      <a href="/accounts/staff-login/" class="cta-button btn-staff">Login Here</a>
+    </div>
+
+    <!-- Lab Assistant Features -->
+    <div class="feature-card">
+      <div class="feature-icon">🔬</div>
+      <h4>Lab Assistants</h4>
+      <p>Upload test reports for patients, track uploads, and manage laboratory operations seamlessly.</p>
+      <a href="/accounts/staff-login/" class="cta-button btn-staff">Login Here</a>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Links Section -->
+<div class="card-section">
+  <h2 class="mb-4 text-center">Quick Links</h2>
+  <div class="row g-3">
+    <!-- Patient Links -->
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">Patient Portal</h5>
+        </div>
+        <div class="card-body">
+          <ul class="list-unstyled">
+            <li class="mb-2">
+              <a href="/accounts/patient-register/" class="btn btn-link text-decoration-none">
+                <i class="bi bi-plus-circle"></i> Create New Account
+              </a>
+            </li>
+            <li class="mb-2">
+              <a href="/accounts/patient-login/" class="btn btn-link text-decoration-none">
+                <i class="bi bi-door-open"></i> Login to My Account
+              </a>
+            </li>
+            <li class="mb-2">
+              <a href="/accounts/patient-request-otp/" class="btn btn-link text-decoration-none">
+                <i class="bi bi-shield-lock"></i> Login with Aadhaar (OTP)
+              </a>
+            </li>
+            <li>
+              <a href="/accounts/patient-dashboard/" class="btn btn-link text-decoration-none">
+                <i class="bi bi-graph-up"></i> My Dashboard
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Staff Links -->
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0">Staff Portal</h5>
+        </div>
+        <div class="card-body">
+          <ul class="list-unstyled">
+            <li class="mb-2">
+              <a href="/accounts/staff-login/" class="btn btn-link text-decoration-none">
+                <i class="bi bi-door-open"></i> Staff Login
+              </a>
+            </li>
+            <li class="mb-2">
+              <a href="/accounts/staff/" class="btn btn-link text-decoration-none">
+                <i class="bi bi-person-plus"></i> Register New Staff
+              </a>
+            </li>
+            <li class="mb-2">
+              <a href="/accounts/doctor-dashboard/" class="btn btn-link text-decoration-none">
+                <i class="bi bi-file-earmark-medical"></i> Doctor Dashboard
+              </a>
+            </li>
+            <li>
+              <a href="/accounts/lab-assistant-dashboard/" class="btn btn-link text-decoration-none">
+                <i class="bi bi-cloud-upload"></i> Lab Assistant Dashboard
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Info Section -->
+<div class="alert alert-info mt-4">
+  <h5 class="alert-heading">About JNMCH Portal</h5>
+  <p>This secure medical reporting system enables efficient management and access to test reports. 
+  Features include secure patient registration, OTP-based authentication, automated report notifications, 
+  and role-based dashboards for different user types.</p>
+  <hr>
+  <p class="mb-0"><small><strong>Data Privacy:</strong> All patient data is encrypted and secure. We comply with healthcare data protection regulations.</small></p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+ const images = [
+    "/images1.jpg",
+    "/images2.jpg",
+
+
+  ];
+
+  let index = 0;
+
+  setInterval(() => {
+    nav.style.backgroundImage = `url('${images[index]}')`;
+    nav.style.backgroundSize = "cover";
+    nav.style.backgroundPosition = "center";
+    nav.style.transition = "background-image 0.5s ease-in-out";
+
+    index = (index + 1) % images.length;
+  }, 100); // 1 second
+</script>
+{% endblock %}
